@@ -1,4 +1,4 @@
-import { Truck, CloudSun, ShieldCheck } from 'lucide-react'
+import { IoNavigateCircleOutline, IoPartlySunnyOutline, IoShieldCheckmarkOutline } from 'react-icons/io5'
 import './App.css'
 
 function App() {
@@ -6,10 +6,10 @@ function App() {
     <div className="app-container">
       <header className="header">
         <div className="logo-container">
-          <Truck className="header-icon" size={32} />
+          <IoNavigateCircleOutline className="header-icon" size={36} />
           <div>
             <h1>Weather-Aware Truck Routing</h1>
-            <p>Smart route risk & weather analysis system</p>
+            <p>Smart route risk and weather analysis system</p>
           </div>
         </div>
       </header>
@@ -22,16 +22,16 @@ function App() {
           </p>
           <div className="features-preview">
             <div className="feature-item">
-              <Truck size={24} />
+              <IoNavigateCircleOutline size={24} />
               <span>Multi-route Planning</span>
             </div>
             <div className="feature-item">
-              <CloudSun size={24} />
-              <span>Weather & Heatmap (0-48h)</span>
+              <IoPartlySunnyOutline size={24} />
+              <span>Weather and Heatmap (0-48h)</span>
             </div>
             <div className="feature-item">
-              <ShieldCheck size={24} />
-              <span>Risk Evaluation & Load Rules</span>
+              <IoShieldCheckmarkOutline size={24} />
+              <span>Risk Evaluation and Load Rules</span>
             </div>
           </div>
         </section>

@@ -19,6 +19,8 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      'semi': 'off',
+      '@typescript-eslint/semi': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
