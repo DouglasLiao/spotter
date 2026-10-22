@@ -53,3 +53,6 @@ dist-ssr/
 *.swp
 *.swo
 .DS_Store
+
+# Initial documentation
+*.md
