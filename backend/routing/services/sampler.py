@@ -86,7 +86,7 @@ def sample_route_checkpoints(
     # Determine sample distances: 0, interval, 2*interval, ..., end
     target_distances = []
     current_dist = 0.0
-    while current_dist < total_distance_miles - (interval_miles * 0.3):
+    while current_dist < total_distance_miles:
         target_distances.append(current_dist)
         current_dist += interval_miles
     # Always include the destination
