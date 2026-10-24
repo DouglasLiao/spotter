@@ -117,3 +117,63 @@ test('one available route and provider error are explicit', async ({ page }) => 
   await page.locator('.submit-button').click()
   await expect(page.locator('.error-banner')).toContainText('Routing provider unavailable.')
 })
+
+test('route completion follows arrival time, dismissal, replay and simulation mode', async ({ page }) => {
+  const data = plan()
+  data.routes[0].duration_seconds = 9000
+  data.routes[0].duration_hours = 2.5
+  data.routes[1].duration_seconds = 18000
+  data.routes[1].duration_hours = 5
+  data.routes[2].duration_seconds = 49 * 3600
+  data.routes[2].duration_hours = 49
+  await page.route('**/api/routes/plan/', (route) => route.fulfill({ json: data }))
+  await page.goto('/')
+  await page.locator('.submit-button').click()
+  await expect(page.locator('.route-card')).toHaveCount(3)
+  const notice = page.locator('.route-completion-notice')
+  const slider = page.getByRole('slider', { name: 'Forecast hour slider' })
+  await expect(notice).toHaveCount(0)
+  await slider.fill('2')
+  await expect(notice).toHaveCount(0)
+
+  // Playback crosses a fractional arrival time at the next hourly step.
+  await page.clock.install()
+  await page.getByRole('button', { name: 'Simulate', exact: true }).click()
+  await page.clock.runFor(450)
+  await expect(notice).toContainText('Route completed')
+  await expect(notice).toContainText('Route 1 has reached Destination')
+  await expect(notice).toHaveAttribute('role', 'status')
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  await page.getByRole('button', { name: 'Dismiss route completion' }).click()
+  await slider.fill('4')
+  await expect(notice).toHaveCount(0)
+
+  // Rewinding below the ETA allows another completion notification.
+  await slider.fill('1')
+  await expect(notice).toHaveCount(0)
+  await slider.fill('3')
+  await expect(notice).toBeVisible()
+  await page.getByRole('button', { name: 'Dismiss route completion' }).click()
+
+  // Completion is evaluated for the selected route, not the previous route.
+  await page.locator('.route-card').nth(1).click()
+  await expect(notice).toHaveCount(0)
+  await slider.fill('5')
+  await expect(notice).toContainText('Route 2 has reached Destination')
+  await page.getByRole('button', { name: 'Truck Progress: Active', exact: true }).click()
+  await expect(notice).toHaveCount(0)
+  await slider.fill('6')
+  await expect(notice).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show Truck on Route', exact: true }).click()
+  await expect(notice).toBeVisible()
+  await page.getByRole('button', { name: 'Dismiss route completion' }).click()
+  await page.locator('.route-card').nth(2).click()
+  await slider.fill('48')
+  await expect(notice).toHaveCount(0)
+
+  await page.locator('.submit-button').click()
+  await expect(slider).toHaveValue('0')
+  await expect(notice).toHaveCount(0)
+  await slider.fill('3')
+  await expect(notice).toContainText('Route 1 has reached Destination')
+})

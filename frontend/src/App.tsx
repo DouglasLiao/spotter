@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   IoNavigateCircleOutline,
   IoAlertCircleOutline,
@@ -12,6 +12,7 @@ import { RouteList } from './components/RouteList'
 import { MapView } from './components/MapView'
 import { RiskLegend } from './components/RiskLegend'
 import { TimelineSlider } from './components/TimelineSlider'
+import { RouteCompletionNotice } from './components/RouteCompletionNotice'
 import './App.css'
 
 function App() {
@@ -24,6 +25,35 @@ function App() {
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState<boolean>(true)
   const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>('risk')
   const [isTripSimulationMode, setIsTripSimulationMode] = useState<boolean>(true)
+  const [isCompletionDismissed, setIsCompletionDismissed] = useState(false)
+
+  const selectedRoute = planData?.routes.find((route) => String(route.id) === String(selectedRouteId))
+    ?? planData?.routes[0]
+  const isRouteCompleted = Boolean(
+    selectedRoute
+    && Number.isFinite(selectedRoute.duration_seconds)
+    && selectedRoute.duration_seconds > 0
+    && timelineOffsetHours * 3600 >= selectedRoute.duration_seconds,
+  )
+  const destinationName = planData?.destination.formatted_address
+    || planData?.destination.address || planData?.destination.name || 'the destination'
+
+  const handleTimelineChange = (hours: number) => {
+    setTimelineOffsetHours(hours)
+    if (selectedRoute && hours * 3600 < selectedRoute.duration_seconds) {
+      setIsCompletionDismissed(false)
+    }
+  }
+
+  const handleSelectRoute = useCallback((routeId: string | number) => {
+    if (String(routeId) !== String(selectedRouteId)) setIsCompletionDismissed(false)
+    setSelectedRouteId(routeId)
+  }, [selectedRouteId])
+
+  const handleToggleSimulation = () => {
+    setIsTripSimulationMode(!isTripSimulationMode)
+    setIsCompletionDismissed(false)
+  }
 
   const handlePlanRoute = async (request: RoutePlanRequest) => {
     setIsLoading(true)
@@ -35,6 +65,7 @@ function App() {
       setPlanData(response)
       setSelectedRouteId(response.recommended_route_id || (response.routes[0]?.id ?? 'route_1'))
       setTimelineOffsetHours(0)
+      setIsCompletionDismissed(false)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred while analyzing routes.'
       setErrorMessage(message)
@@ -57,6 +88,13 @@ function App() {
 
   return (
     <div className="app-container">
+      {isRouteCompleted && isTripSimulationMode && !isCompletionDismissed && !isLoading && !errorMessage && selectedRoute && (
+        <RouteCompletionNotice
+          routeName={selectedRoute.name}
+          destinationName={destinationName}
+          onDismiss={() => setIsCompletionDismissed(true)}
+        />
+      )}
       {/* Top Header */}
       <header className="app-header">
         <div className="header-brand">
@@ -99,7 +137,7 @@ function App() {
               <RouteList
                 planData={planData}
                 selectedRouteId={selectedRouteId}
-                onSelectRoute={setSelectedRouteId}
+                onSelectRoute={handleSelectRoute}
               />
             )}
 
@@ -115,7 +153,7 @@ function App() {
             destination={planData?.destination || null}
             routes={planData?.routes || []}
             selectedRouteId={selectedRouteId}
-            onSelectRoute={setSelectedRouteId}
+            onSelectRoute={handleSelectRoute}
             hasTimeline={!!planData}
             forecastHour={timelineOffsetHours}
             corridor={planData?.corridor}
@@ -123,7 +161,7 @@ function App() {
             heatmapMetric={heatmapMetric}
             onChangeHeatmapMetric={setHeatmapMetric}
             isTripSimulationMode={isTripSimulationMode}
-            onToggleSimulationMode={() => setIsTripSimulationMode(!isTripSimulationMode)}
+            onToggleSimulationMode={handleToggleSimulation}
           />
 
           {/* Empty Prompt if no route loaded */}
@@ -155,7 +193,7 @@ function App() {
           {planData && (
             <TimelineSlider
               offsetHours={timelineOffsetHours}
-              onChangeOffset={setTimelineOffsetHours}
+              onChangeOffset={handleTimelineChange}
               baseDepartureTime={planData.departure_time}
               onApplyForecastTime={handleApplyForecastTime}
               isLoading={isLoading}
