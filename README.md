@@ -1,4 +1,4 @@
-# Weather-Aware Truck Routing
+# HaulCast
 
 Compare truck routes using weather forecasts, load weight, and travel time.
 Built with Django REST Framework, React, TypeScript, and Leaflet.

@@ -100,7 +100,7 @@ function App() {
         <div className="header-brand">
           <IoNavigateCircleOutline size={32} className="brand-icon" />
           <div className="header-title-box">
-            <h1>Weather-Aware Truck Routing</h1>
+            <h1>HaulCast</h1>
             <p>Corridor Weather Risk Analysis & Safe Navigation</p>
           </div>
         </div>
