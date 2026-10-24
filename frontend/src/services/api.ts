@@ -1,4 +1,4 @@
-import type { RoutePlanRequest, RoutePlanResponse } from '../types/routing'
+import type { LocationGeo, RoutePlanRequest, RoutePlanResponse } from '../types/routing'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
@@ -33,4 +33,12 @@ export async function planRoutes(payload: RoutePlanRequest): Promise<RoutePlanRe
   }
 
   return data as RoutePlanResponse
+}
+
+
+export async function searchCities(query: string, signal: AbortSignal): Promise<LocationGeo[]> {
+  const response = await fetch(`${API_BASE_URL}/cities/?q=${encodeURIComponent(query)}`, { signal })
+  if (!response.ok) throw new Error('City suggestions are unavailable. Enter a city, address, or coordinates.')
+  const data = await response.json()
+  return data.results
 }

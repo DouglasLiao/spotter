@@ -110,9 +110,9 @@ def _fetch_chunk(chunk: list[tuple[float, float]]) -> list[dict | None]:
 
 
 def get_weather_for_checkpoints(
-    checkpoints: list[dict], forecast_start: datetime | None = None
+    checkpoints: list[dict], forecast_start: datetime | None = None, forecast_hours: int = 48
 ) -> list[dict]:
-    """Fetch each coordinate once; use ETA for risk and departure + 0..48h for the map."""
+    """Fetch each coordinate once; use ETA for risk and a bounded departure-relative window for the map."""
     if not checkpoints:
         return []
     forecast_start = as_utc(forecast_start or checkpoints[0]["eta"])
@@ -132,6 +132,6 @@ def get_weather_for_checkpoints(
         cp["hourly_forecast"] = [
             {"hour": hour, "time": (forecast_start + timedelta(hours=hour)).isoformat(),
              **_weather_at(item, forecast_start + timedelta(hours=hour))}
-            for hour in range(49)
+            for hour in range(min(384, max(48, forecast_hours)) + 1)
         ]
     return checkpoints

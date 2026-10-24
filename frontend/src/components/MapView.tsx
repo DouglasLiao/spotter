@@ -67,7 +67,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const selected = routes.find((route) => String(route.id) === String(selectedRouteId)) ?? routes[0]
 
   const forecastPoints = useMemo(() => (corridor?.points ?? []).map((point) => ({
-    ...point, forecast: point.hourly_forecast[forecastHour],
+    ...point, forecast: point.hourly_forecast[Math.floor(forecastHour)],
   })), [corridor, forecastHour])
   const availableCount = forecastPoints.filter((point) => point.forecast?.available).length
 

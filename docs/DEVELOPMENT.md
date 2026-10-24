@@ -101,3 +101,23 @@ weather, risk, and recommendation services. These tests do not guarantee provide
 availability or a particular frame rate on every device.
 
 See the [Vercel guide](DEPLOY_VERCEL.md) for native service validation and deployment.
+
+## City search and trip simulation
+
+`GET /api/cities/?q=Campinas` returns up to six city choices with names, states,
+countries, and coordinates using Photon. Queries need at least three characters.
+The autocomplete waits 350 ms after typing and cancels obsolete requests. Empty
+results and provider failures have separate messages; manual entry remains available.
+
+`POST /api/routes/plan/` accepts optional `origin_location` and
+`destination_location` objects containing `lat`, `lon`, and `formatted_address`.
+A selected suggestion supplies those coordinates directly, preserving the chosen
+city. Editing clears the selection; swapping fields also swaps their coordinates.
+
+The timeline extends to the selected route's arrival, rounded up to a whole hour,
+with a minimum 48-hour window for weather exploration. Autoplay stops at the exact
+arrival time, including fractional hours, and can restart from departure. Switching
+routes clamps the time to the new window and pauses playback. Weather at fractional
+times uses the containing hour. Corridor forecasts cover the longest route up to
+384 hours after departure; missing or later hours remain Unknown. Checkpoints
+continue to use ETA weather for risk ranking.

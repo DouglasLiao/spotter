@@ -26,11 +26,16 @@ Rebuild after source changes. Database data persists until you run
 
 ## How it works
 
-1. Enter the origin, destination, departure time, load weight in pounds, and a
-   checkpoint interval of 10, 25, or 50 miles.
-2. Compare up to three routes, with weather evaluated at each checkpoint's ETA.
-3. Inspect the recommended route, risk summaries, and checkpoints on the map.
-4. Explore the corridor heatmap from departure through the next 48 hours.
+1. Choose origin and destination cities from autocomplete suggestions, or enter
+   addresses or coordinates.
+2. Set departure time, load weight in pounds, and checkpoint interval (10, 25, or 50 miles).
+3. Compare up to three routes and inspect weather risks at each checkpoint's ETA.
+4. Explore the corridor heatmap and simulate the selected route through arrival.
+   Playback stops at arrival; select Simulate to replay.
+
+The timeline covers at least 48 hours and extends for longer routes. Map forecasts
+extend up to 384 hours, with unavailable hours shown as **Unknown**. Simulation can
+continue through arrival even when forecasts are unavailable.
 
 Routes are ranked by Severe miles, High miles, average risk, then travel time.
 Missing forecasts appear as **Unknown**; routes with incomplete ETA weather are

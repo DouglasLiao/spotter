@@ -34,7 +34,7 @@ class RoutePlanAPITests(APITestCase):
 
 class RoutePlanningIntegrationTests(APITestCase):
     """Exercise real services and serialization with only external HTTP mocked."""
-    def plan(self, weather_mode='ok', route_count=3):
+    def plan(self, weather_mode='ok', route_count=3, duration_hours=None):
         from unittest.mock import patch
         import requests
         from routing.tests.test_weather_client import forecast, response
@@ -42,7 +42,11 @@ class RoutePlanningIntegrationTests(APITestCase):
 
         def fetch(url, **kwargs):
             if '/route/v1/' in url:
-                return response({'code': 'Ok', 'routes': [raw_route(i * 0.2) for i in range(route_count)]})
+                routes = [raw_route(i * 0.2) for i in range(route_count)]
+                if duration_hours is not None:
+                    for route in routes:
+                        route['duration'] = duration_hours * 3600
+                return response({'code': 'Ok', 'routes': routes})
             if weather_mode == 'offline':
                 raise requests.Timeout('Weather offline')
             result = []
@@ -110,3 +114,12 @@ class RoutePlanningIntegrationTests(APITestCase):
     def test_routing_failure_returns_502(self):
         result = self.plan(route_count=0)
         self.assertEqual(result.status_code, 502)
+
+
+    def test_long_route_response_extends_corridor_through_arrival(self):
+        result = self.plan(duration_hours=60.5)
+        self.assertEqual(result.status_code, 200)
+        hourly = result.data['corridor']['points'][0]['hourly_forecast']
+        self.assertEqual(len(hourly), 62)
+        self.assertTrue(hourly[60]['available'])
+        self.assertEqual(hourly[61]['time'], '2026-10-27T01:30:00+00:00')

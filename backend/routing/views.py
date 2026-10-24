@@ -1,4 +1,5 @@
 import logging
+import math
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -6,7 +7,7 @@ from rest_framework.views import APIView
 
 from routing.serializers import RoutePlanRequestSerializer
 from routing.services.corridor import build_corridor_grid
-from routing.services.geocoding import geocode
+from routing.services.geocoding import geocode, search_cities
 from routing.services.recommender import recommend_best_route
 from routing.services.risk_engine import (
     calculate_route_risk_metrics,
@@ -50,8 +51,8 @@ class RoutePlanView(APIView):
 
         # 1. Geocode origin and destination
         try:
-            origin_geo = geocode(origin_str)
-            dest_geo = geocode(dest_str)
+            origin_geo = data.get("origin_location") or geocode(origin_str)
+            dest_geo = data.get("destination_location") or geocode(dest_str)
         except ValueError as e:
             logger.warning("Geocoding failed: %s", e)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -86,7 +87,10 @@ class RoutePlanView(APIView):
                 )
             corridor = build_corridor_grid(routes, departure_time)
             points = [cp for route in routes for cp in route["checkpoints"]] + corridor["points"]
-            get_weather_for_checkpoints(points, forecast_start=departure_time)
+            get_weather_for_checkpoints(
+                points, forecast_start=departure_time,
+                forecast_hours=min(384, max(48, math.ceil(max(route["duration_seconds"] for route in routes) / 3600))),
+            )
             for point in points:
                 point["risk"] = evaluate_checkpoint_risk(point["weather"], load_weight)
                 for forecast in point["hourly_forecast"]:
@@ -140,3 +144,17 @@ class RoutePlanView(APIView):
         }
 
         return Response(response_payload, status=status.HTTP_200_OK)
+
+
+class CitySearchView(APIView):
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+        if len(query) < 3:
+            return Response({"results": []})
+        if len(query) > 255:
+            return Response({"error": "Search must be at most 255 characters."}, status=400)
+        try:
+            return Response({"results": search_cities(query)})
+        except Exception:
+            logger.warning("City search provider unavailable", exc_info=True)
+            return Response({"error": "City suggestions are unavailable. You can still enter a city, address, or coordinates."}, status=503)

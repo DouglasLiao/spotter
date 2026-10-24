@@ -53,8 +53,8 @@ admin. Do not run migrations as a function startup step. Use Docker locally for
 admin access. Adding persisted user accounts or saved trips requires an external
 database and a corresponding application change.
 
-Checkpoint responses carry ETA weather; only corridor points carry the 49-hour
-forecast series. Dynamic JSON supports gzip to reduce large responses. Actual
+Checkpoint responses carry ETA weather; only corridor points carry the hourly
+forecast series (49 entries by default, extended for longer routes up to 385 entries). Dynamic JSON supports gzip to reduce large responses. Actual
 [function duration and payload limits](https://vercel.com/docs/functions/limitations)
 still apply; provider failures remain explicit Unknown states.
 

@@ -125,3 +125,16 @@ class WeatherClientTests(SimpleTestCase):
         weather = get_weather_for_checkpoints([self.point()])[0]['weather']
         self.assertAlmostEqual(weather['rain_in_hr'], 0.3)
         self.assertEqual(weather['snow_in_hr'], 2.0)
+
+    @patch('routing.services.weather_client.requests.get')
+    def test_long_trip_extends_window_without_inventing_missing_forecasts(self, get):
+        get.return_value = response(forecast(72))
+        point = get_weather_for_checkpoints([self.point(60)], START, forecast_hours=80)[0]
+        self.assertEqual(len(point['hourly_forecast']), 81)
+        self.assertEqual(point['weather']['wind_mph'], 60)
+        self.assertTrue(point['hourly_forecast'][60]['available'])
+        self.assertFalse(point['hourly_forecast'][72]['available'])
+        self.assertIsNone(point['hourly_forecast'][80]['wind_mph'])
+        bounded = get_weather_for_checkpoints([self.point(500)], START, forecast_hours=500)[0]
+        self.assertEqual(len(bounded['hourly_forecast']), 385)
+        self.assertFalse(bounded['weather']['available'])

@@ -1,4 +1,5 @@
 import logging
+import math
 import re
 import urllib.parse
 
@@ -122,3 +123,36 @@ def geocode(query: str) -> dict:
     raise ValueError(
         f"Unable to geocode location: '{clean_query}'. Please provide a valid city, address, or coordinates."
     )
+
+
+def search_cities(query: str) -> list[dict]:
+    """Return distinct city choices; an unavailable provider must not look like no matches."""
+    response = requests.get(
+        settings.PHOTON_GEOCODE_URL,
+        params={"q": query, "limit": 6, "layer": "city", "lang": "en"},
+        headers={"User-Agent": settings.USER_AGENT},
+        timeout=settings.EXTERNAL_API_TIMEOUT,
+    )
+    response.raise_for_status()
+    features = response.json()["features"]
+    if not isinstance(features, list):
+        raise ValueError("Invalid city search response")
+    results = []
+    seen = set()
+    for feature in features:
+        try:
+            props = feature["properties"]
+            lon, lat = map(float, feature["geometry"]["coordinates"])
+            if not (math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180):
+                continue
+            name = props.get("name") or props.get("city")
+            if not name:
+                continue
+            label = ", ".join(dict.fromkeys(str(part) for part in (name, props.get("state"), props.get("country")) if part))
+            key = (label, lat, lon)
+            if key not in seen:
+                results.append({"name": name, "formatted_address": label, "lat": lat, "lon": lon})
+                seen.add(key)
+        except (KeyError, TypeError, ValueError):
+            continue
+    return results[:6]

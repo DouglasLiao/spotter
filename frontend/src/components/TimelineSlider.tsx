@@ -9,6 +9,8 @@ import {
 } from 'react-icons/io5'
 
 interface TimelineSliderProps {
+  arrivalHours: number
+  maxHours: number
   offsetHours: number
   onChangeOffset: (hours: number) => void
   baseDepartureTime: string
@@ -19,6 +21,8 @@ interface TimelineSliderProps {
 const QUICK_HOURS = [0, 3, 6, 12, 18, 24, 36, 48]
 
 export const TimelineSlider: React.FC<TimelineSliderProps> = ({
+  arrivalHours,
+  maxHours,
   offsetHours,
   onChangeOffset,
   baseDepartureTime,
@@ -42,14 +46,14 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
 
   // Smooth auto-play simulation
   React.useEffect(() => {
-    if (!isPlaying) return
+    if (!isPlaying || isLoading || offsetHours >= arrivalHours) return
 
     const interval = setInterval(() => {
-      onChangeOffset(offsetHours >= 48 ? 0 : offsetHours + 1)
+      onChangeOffset(Math.min(arrivalHours, offsetHours + 1))
     }, 450)
 
     return () => clearInterval(interval)
-  }, [isPlaying, offsetHours, onChangeOffset])
+  }, [isPlaying, offsetHours, onChangeOffset, arrivalHours, isLoading])
 
   const handleStepBack = () => {
     setIsPlaying(false)
@@ -58,7 +62,7 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
 
   const handleStepForward = () => {
     setIsPlaying(false)
-    onChangeOffset(Math.min(48, offsetHours + 1))
+    onChangeOffset(Math.min(maxHours, offsetHours + 1))
   }
 
   return (
@@ -66,10 +70,10 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
       <div className="timeline-header-row">
         <div className="timeline-title-col">
           <IoTimeOutline size={18} className="timeline-icon" />
-          <span className="timeline-title">Corridor Forecast & Trip Simulation (0 to 48 Hours)</span>
+          <span className="timeline-title">Corridor Forecast & Trip Simulation (0 to {maxHours} Hours)</span>
         </div>
         <div className="timeline-current-val">
-          <span className="timeline-offset-badge">+{offsetHours}h Offset</span>
+          <span className="timeline-offset-badge">+{Number(offsetHours.toFixed(2))}h Offset</span>
           <span className="timeline-projected-date">{projectedDate}</span>
         </div>
       </div>
@@ -89,19 +93,22 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
           <button
             type="button"
             className="timeline-play-btn"
-            onClick={() => setIsPlaying(!isPlaying)}
-            title={isPlaying ? 'Pause Simulation' : 'Play Simulation'}
+            onClick={() => {
+              if (offsetHours >= arrivalHours) onChangeOffset(0)
+              setIsPlaying(offsetHours >= arrivalHours || !isPlaying)
+            }}
+            title={isPlaying && offsetHours < arrivalHours ? 'Pause Simulation' : 'Play Simulation'}
             disabled={isLoading}
           >
-            {isPlaying ? <IoPauseOutline size={18} /> : <IoPlayOutline size={18} />}
-            <span>{isPlaying ? 'Pause' : 'Simulate'}</span>
+            {isPlaying && offsetHours < arrivalHours ? <IoPauseOutline size={18} /> : <IoPlayOutline size={18} />}
+            <span>{isPlaying && offsetHours < arrivalHours ? 'Pause' : 'Simulate'}</span>
           </button>
 
           <button
             type="button"
             className="timeline-step-btn"
             onClick={handleStepForward}
-            disabled={offsetHours >= 48 || isLoading}
+            disabled={offsetHours >= maxHours || isLoading}
             title="Step +1 Hour"
           >
             <IoPlayForwardOutline size={16} />
@@ -111,8 +118,8 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
         <input
           type="range"
           min="0"
-          max="48"
-          step="1"
+          max={maxHours}
+          step="any"
           value={offsetHours}
           onChange={(e) => {
             setIsPlaying(false)
@@ -137,7 +144,7 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
 
       {/* Quick Jump Buttons */}
       <div className="timeline-pills-row">
-        {QUICK_HOURS.map((hr) => (
+        {[...new Set([...QUICK_HOURS.filter((hour) => hour <= maxHours), maxHours])].map((hr) => (
           <button
             key={hr}
             type="button"

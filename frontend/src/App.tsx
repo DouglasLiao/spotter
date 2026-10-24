@@ -29,11 +29,13 @@ function App() {
 
   const selectedRoute = planData?.routes.find((route) => String(route.id) === String(selectedRouteId))
     ?? planData?.routes[0]
+  const timelineMaxHours = Math.max(48, Math.ceil((selectedRoute?.duration_seconds ?? 0) / 3600))
+  const visibleTimelineHours = Math.min(timelineOffsetHours, timelineMaxHours)
   const isRouteCompleted = Boolean(
     selectedRoute
     && Number.isFinite(selectedRoute.duration_seconds)
     && selectedRoute.duration_seconds > 0
-    && timelineOffsetHours * 3600 >= selectedRoute.duration_seconds,
+    && visibleTimelineHours >= selectedRoute.duration_seconds / 3600,
   )
   const destinationName = planData?.destination.formatted_address
     || planData?.destination.address || planData?.destination.name || 'the destination'
@@ -47,8 +49,10 @@ function App() {
 
   const handleSelectRoute = useCallback((routeId: string | number) => {
     if (String(routeId) !== String(selectedRouteId)) setIsCompletionDismissed(false)
+    const route = planData?.routes.find((item) => String(item.id) === String(routeId))
+    setTimelineOffsetHours((hours) => Math.min(hours, Math.max(48, Math.ceil((route?.duration_seconds ?? 0) / 3600))))
     setSelectedRouteId(routeId)
-  }, [selectedRouteId])
+  }, [selectedRouteId, planData])
 
   const handleToggleSimulation = () => {
     setIsTripSimulationMode(!isTripSimulationMode)
@@ -155,7 +159,7 @@ function App() {
             selectedRouteId={selectedRouteId}
             onSelectRoute={handleSelectRoute}
             hasTimeline={!!planData}
-            forecastHour={timelineOffsetHours}
+            forecastHour={visibleTimelineHours}
             corridor={planData?.corridor}
             departureTime={planData?.departure_time}
             heatmapMetric={heatmapMetric}
@@ -192,7 +196,10 @@ function App() {
           {/* Forecast Timeline Slider */}
           {planData && (
             <TimelineSlider
-              offsetHours={timelineOffsetHours}
+              key={`${selectedRouteId}-${planData.departure_time}`}
+              arrivalHours={(selectedRoute?.duration_seconds ?? 0) / 3600}
+              maxHours={timelineMaxHours}
+              offsetHours={visibleTimelineHours}
               onChangeOffset={handleTimelineChange}
               baseDepartureTime={planData.departure_time}
               onApplyForecastTime={handleApplyForecastTime}

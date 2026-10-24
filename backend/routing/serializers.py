@@ -3,7 +3,15 @@ from datetime import UTC, datetime
 from rest_framework import serializers
 
 
+class SelectedLocationSerializer(serializers.Serializer):
+    lat = serializers.FloatField(min_value=-90, max_value=90)
+    lon = serializers.FloatField(min_value=-180, max_value=180)
+    formatted_address = serializers.CharField(max_length=255)
+
+
 class RoutePlanRequestSerializer(serializers.Serializer):
+    origin_location = SelectedLocationSerializer(required=False)
+    destination_location = SelectedLocationSerializer(required=False)
     origin = serializers.CharField(
         max_length=255,
         required=True,

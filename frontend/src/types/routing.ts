@@ -92,6 +92,8 @@ export interface RouteOption {
 }
 
 export interface RoutePlanRequest {
+  origin_location?: LocationGeo
+  destination_location?: LocationGeo
   origin: string
   destination: string
   departure_time?: string

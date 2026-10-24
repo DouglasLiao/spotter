@@ -9,7 +9,8 @@ import {
   IoSwapVerticalOutline,
   IoFlashOutline,
 } from 'react-icons/io5'
-import type { RoutePlanRequest } from '../types/routing'
+import { CityAutocomplete } from './CityAutocomplete'
+import type { LocationGeo, RoutePlanRequest } from '../types/routing'
 
 interface RouteFormProps {
   onSubmit: (request: RoutePlanRequest) => void
@@ -53,6 +54,8 @@ const PRESET_CORRIDORS: CorridorPreset[] = [
 export const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
   const [origin, setOrigin] = useState('Chicago, IL')
   const [destination, setDestination] = useState('Denver, CO')
+  const [originLocation, setOriginLocation] = useState<LocationGeo>()
+  const [destinationLocation, setDestinationLocation] = useState<LocationGeo>()
   const [loadWeight, setLoadWeight] = useState(42000)
   const [sampleInterval, setSampleInterval] = useState<number>(25)
 
@@ -64,11 +67,15 @@ export const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => 
   })
 
   const handleSwapLocations = () => {
+    setOriginLocation(destinationLocation)
+    setDestinationLocation(originLocation)
     setOrigin(destination)
     setDestination(origin)
   }
 
   const handleApplyPreset = (preset: CorridorPreset) => {
+    setOriginLocation(undefined)
+    setDestinationLocation(undefined)
     setOrigin(preset.origin)
     setDestination(preset.destination)
     setLoadWeight(preset.loadWeight)
@@ -81,6 +88,8 @@ export const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => 
     const departureIso = new Date(departureTime).toISOString()
 
     onSubmit({
+      origin_location: originLocation,
+      destination_location: destinationLocation,
       origin: origin.trim(),
       destination: destination.trim(),
       departure_time: departureIso,
@@ -124,14 +133,11 @@ export const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => 
             <IoLocationOutline size={16} className="field-icon" />
             Origin Location
           </label>
-          <input
+          <CityAutocomplete
             id="origin-input"
-            type="text"
-            className="form-input"
-            placeholder="City, State or Address (e.g. Chicago, IL)"
+            placeholder="City, State or Country"
             value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
-            required
+            onChange={(value, location) => { setOrigin(value); setOriginLocation(location) }}
             disabled={isLoading}
           />
         </div>
@@ -153,14 +159,11 @@ export const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => 
             <IoNavigateOutline size={16} className="field-icon" />
             Destination Location
           </label>
-          <input
+          <CityAutocomplete
             id="dest-input"
-            type="text"
-            className="form-input"
-            placeholder="City, State or Address (e.g. Denver, CO)"
+            placeholder="City, State or Country"
             value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            required
+            onChange={(value, location) => { setDestination(value); setDestinationLocation(location) }}
             disabled={isLoading}
           />
         </div>
