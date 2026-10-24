@@ -1,32 +1,31 @@
-# React + TypeScript + Vite
+# Spotter frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React, TypeScript, Vite, and Leaflet interface for weather-aware truck routing.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Start the Django API first, then run:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm ci
+cp .env.example .env
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Open http://localhost:5173. Set `VITE_API_BASE_URL` in `.env` to change the API URL.
+The example points to `http://localhost:8000/api`.
+
+## Checks
+
+```bash
+npm run build
+npm run lint
+npx playwright install chromium
+npm run test:e2e
+```
+
+The browser tests cover desktop and mobile layouts. API responses and map tiles
+are mocked for repeatable checks.
+
+See the [project README](../README.md), [development guide](../docs/DEVELOPMENT.md),
+and [Vercel guide](../docs/DEPLOY_VERCEL.md) for the complete setup.
