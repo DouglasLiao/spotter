@@ -118,3 +118,16 @@ class RecommenderServiceTests(TestCase):
 
         best, _ = recommend_best_route([r1, r2])
         self.assertEqual(best["id"], "route_2")
+
+
+class IncompleteWeatherRecommendationTests(TestCase):
+    def test_unknown_routes_are_excluded_and_all_unknown_yields_no_recommendation(self):
+        unknown = {'id': 'unknown', 'risk_summary': {'weather_complete': False, 'average_risk_score': None}}
+        known = {'id': 'known', 'name': 'Known route', 'duration_hours': 1, 'duration_seconds': 3600,
+                 'risk_summary': {'weather_complete': True, 'severe_miles': 25, 'high_miles': 0, 'average_risk_score': 4}}
+        best, _ = recommend_best_route([unknown, known])
+        self.assertEqual(best['id'], 'known')
+        self.assertFalse(unknown['is_recommended'])
+        best, routes = recommend_best_route([unknown])
+        self.assertIsNone(best)
+        self.assertFalse(routes[0]['is_recommended'])

@@ -113,3 +113,31 @@ class CheckpointAndRouteRiskTests(TestCase):
         # Weighted average: (10*1 + 10*3 + 10*4) / 30 = 80/30 = 2.67
         self.assertEqual(metrics["average_risk_score"], 2.67)
         self.assertEqual(metrics["max_risk_level"], "Severe")
+
+
+class MissingAndDecimalWeatherTests(TestCase):
+    def test_decimal_wind_and_exact_load_boundaries(self):
+        for wind, load, expected in [
+            (44.5, 40000, RiskLevel.HIGH), (44.5, 40000.1, RiskLevel.SEVERE),
+            (44.99, 45000, RiskLevel.SEVERE), (54.5, 30000, RiskLevel.SEVERE),
+            (54.5, 30000.1, RiskLevel.NO_TRAVEL), (54.99, 31000, RiskLevel.NO_TRAVEL),
+            (55, 0, RiskLevel.NO_TRAVEL),
+        ]:
+            with self.subTest(wind=wind, load=load):
+                self.assertEqual(apply_load_rules(wind, load)[0], expected)
+
+    def test_unknown_weather_is_not_low(self):
+        for weather in ({}, {'wind_mph': None}, {'wind_mph': 0, 'rain_in_hr': 0, 'snow_in_hr': None}):
+            self.assertEqual(evaluate_checkpoint_risk(weather, 0)['overall_risk_label'], 'Unknown')
+
+    def test_partial_metrics_cannot_claim_known_average_or_peak(self):
+        checkpoints = [
+            {'segment_miles': 25, 'risk': {'overall_risk_level': None}},
+            {'segment_miles': 25, 'risk': {'overall_risk_level': 1}},
+        ]
+        metrics = calculate_route_risk_metrics(checkpoints)
+        self.assertFalse(metrics['weather_complete'])
+        self.assertEqual(metrics['unknown_miles'], 25)
+        self.assertEqual(metrics['low_miles'], 25)
+        self.assertIsNone(metrics['average_risk_score'])
+        self.assertEqual(metrics['max_risk_level'], 'Unknown')
