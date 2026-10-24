@@ -3,6 +3,8 @@
 Compare truck routes using weather forecasts, load weight, and travel time.
 Built with Django REST Framework, React, TypeScript, and Leaflet.
 
+Live app: https://haulcast-douglasliao.vercel.app
+
 ## Run with Docker
 
 Requires Docker and Docker Compose v2.24 or newer.
@@ -39,5 +41,5 @@ excluded from recommendations. Routing and weather require internet access.
 - [Local setup, configuration, and tests](docs/DEVELOPMENT.md)
 - [Deploy to Vercel](docs/DEPLOY_VERCEL.md)
 
-Vercel serves the frontend and stateless API under one URL. Public deployment and
-the Loom recording are pending.
+Vercel serves the frontend and stateless API under one URL. The `robots.txt` file
+asks all crawlers not to crawl the site. The Loom recording is pending.
