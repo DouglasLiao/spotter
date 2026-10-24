@@ -56,10 +56,3 @@ test-results/
 *.swo
 .DS_Store
 .vercel/
-
-# Initial documentation
-*.md
-
-# Assessment delivery documentation
-!docs/DEPLOY_VERCEL.md
-!docs/WALKTHROUGH.md
