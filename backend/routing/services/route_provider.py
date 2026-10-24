@@ -81,7 +81,7 @@ def _format_route(raw_route: dict, route_index: int, custom_label: str = None) -
 
 def get_route_options(origin: dict, destination: dict) -> list[dict]:
     """
-    Generates exactly 3 distinct route options between origin and destination.
+    Generates up to 3 distinct route options between origin and destination.
     Uses OSRM alternatives and geometric waypoint perturbation if fewer than 3 options exist.
     """
     orig_lat, orig_lon = origin["lat"], origin["lon"]
@@ -100,13 +100,19 @@ def get_route_options(origin: dict, destination: dict) -> list[dict]:
     )
 
     formatted_routes = []
-    seen_distances = set()
+    seen_geometries = set()
 
-    for idx, r in enumerate(raw_routes):
-        dist_round = round(r.get("distance", 0), -2)
-        if dist_round not in seen_distances:
-            seen_distances.add(dist_round)
-            formatted_routes.append(_format_route(r, len(formatted_routes)))
+    def append_route(raw, label=None):
+        geometry = raw.get("geometry", {}).get("coordinates", [])
+        if len(geometry) < 2 or raw.get("distance", 0) <= 0 or raw.get("duration", 0) <= 0:
+            return
+        signature = tuple((round(point[0], 5), round(point[1], 5)) for point in geometry)
+        if signature not in seen_geometries:
+            seen_geometries.add(signature)
+            formatted_routes.append(_format_route(raw, len(formatted_routes), label))
+
+    for raw in raw_routes:
+        append_route(raw)
 
     # 2. If fewer than 3 routes returned, generate realistic alternative corridors via offset waypoints
     if len(formatted_routes) < 3:
@@ -136,24 +142,12 @@ def get_route_options(origin: dict, destination: dict) -> list[dict]:
             )
             if via_routes:
                 r = via_routes[0]
-                dist_round = round(r.get("distance", 0), -2)
-                if dist_round not in seen_distances:
-                    seen_distances.add(dist_round)
-                    formatted_routes.append(
-                        _format_route(
-                            r,
-                            len(formatted_routes),
-                            custom_label=f"Route {len(formatted_routes) + 1} ({alt_label})",
-                        )
-                    )
+                append_route(r, f"Route {len(formatted_routes) + 1} ({alt_label})")
 
-    # In the rare event OSRM fails completely or is offline, generate fallback geometric routes
+    if not formatted_routes:
+        raise RuntimeError("No drivable routes are available from the routing service.")
     if len(formatted_routes) < 3:
-        logger.error(
-            "Unable to generate 3 route options from routing service (only got %d)",
-            len(formatted_routes),
-        )
-        raise RuntimeError("Unable to generate 3 route options from routing service.")
+        logger.warning("Only %d distinct routes available", len(formatted_routes))
 
     logger.info("Successfully generated %d route options.", len(formatted_routes[:3]))
     return formatted_routes[:3]

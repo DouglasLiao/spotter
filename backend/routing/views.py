@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from routing.serializers import RoutePlanRequestSerializer
+from routing.services.corridor import build_corridor_grid
 from routing.services.geocoding import geocode
 from routing.services.recommender import recommend_best_route
 from routing.services.risk_engine import (
@@ -75,32 +76,37 @@ class RoutePlanView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # 3. Process each route: sample checkpoints, fetch weather, evaluate risk
+        # Fetch all route checkpoints and the corridor in one deduplicated weather pass.
         try:
             for route in routes:
-                checkpoints = sample_route_checkpoints(
-                    route["coordinates"],
-                    route["distance_miles"],
-                    route["duration_seconds"],
-                    departure_time,
+                route["checkpoints"] = sample_route_checkpoints(
+                    route["coordinates"], route["distance_miles"],
+                    route["duration_seconds"], departure_time,
                     interval_miles=sample_interval,
                 )
-
-                # Fetch real-time hourly forecast matching the ETA of each checkpoint
-                enriched_checkpoints = get_weather_for_checkpoints(checkpoints)
-
-                # Evaluate risk at each checkpoint considering truck load weight
-                for cp in enriched_checkpoints:
-                    cp["risk"] = evaluate_checkpoint_risk(cp["weather"], load_weight)
-
-                # Compute aggregated route-level risk summary
-                route["risk_summary"] = calculate_route_risk_metrics(
-                    enriched_checkpoints
-                )
-                route["checkpoints"] = enriched_checkpoints
-
-            # 4. Recommend the safest route using strict 4-tier preference logic
+            corridor = build_corridor_grid(routes, departure_time)
+            points = [cp for route in routes for cp in route["checkpoints"]] + corridor["points"]
+            get_weather_for_checkpoints(points, forecast_start=departure_time)
+            for point in points:
+                point["risk"] = evaluate_checkpoint_risk(point["weather"], load_weight)
+                for forecast in point["hourly_forecast"]:
+                    risk = evaluate_checkpoint_risk(forecast, load_weight)
+                    forecast.update(
+                        risk_level=risk["overall_risk_level"],
+                        risk_label=risk["overall_risk_label"],
+                        load_penalty_applied=risk["load_penalty_applied"],
+                    )
+            for route in routes:
+                route["risk_summary"] = calculate_route_risk_metrics(route["checkpoints"])
+                # The map uses corridor forecasts; checkpoints display ETA weather only.
+                for checkpoint in route["checkpoints"]:
+                    checkpoint.pop("hourly_forecast", None)
             best_route, processed_routes = recommend_best_route(routes)
+            # Corridor needs only the time series, not duplicated ETA weather/risk.
+            corridor["points"] = [
+                {key: point[key] for key in ("lat", "lon", "hourly_forecast")}
+                for point in corridor["points"]
+            ]
 
         except Exception as e:
             logger.error("Error during risk analysis: %s", e, exc_info=True)
@@ -111,13 +117,25 @@ class RoutePlanView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+        warnings = []
+        if len(routes) < 3:
+            warnings.append(f"Only {len(routes)} distinct route option(s) are available from the routing provider.")
+        if any(not route["risk_summary"]["weather_complete"] for route in routes):
+            warnings.append("Some checkpoint weather is unavailable. Routes with incomplete weather are excluded from recommendations.")
+        if best_route is None:
+            warnings.append("No recommendation is available because checkpoint weather is incomplete for every route.")
+        elif best_route["risk_summary"]["no_travel_miles"] > 0:
+            warnings.append("The best available route still contains No Travel conditions. The recommendation is a comparison, not travel clearance.")
+
         response_payload = {
             "origin": origin_geo,
             "destination": dest_geo,
             "departure_time": departure_time.isoformat(),
             "load_weight": load_weight,
             "sample_interval_miles": sample_interval,
-            "recommended_route_id": best_route["id"],
+            "recommended_route_id": best_route["id"] if best_route else None,
+            "warnings": warnings,
+            "corridor": corridor,
             "routes": processed_routes,
         }
 

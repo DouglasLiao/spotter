@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def recommend_best_route(routes: list[dict]) -> tuple[dict, list[dict]]:
+def recommend_best_route(routes: list[dict]) -> tuple[dict | None, list[dict]]:
     """
     Selects the best route based on the assessment's strict preference rules:
       1. Fewest Severe miles (including No Travel)
@@ -27,7 +27,13 @@ def recommend_best_route(routes: list[dict]) -> tuple[dict, list[dict]]:
         return (severe_miles, high_miles, avg_risk, duration_sec)
 
     # Sort routes based on the 4 tiered criteria
-    sorted_routes = sorted(routes, key=_sort_key)
+    eligible = [route for route in routes if route.get("risk_summary", {}).get("weather_complete", True)]
+    for route in routes:
+        route["is_recommended"] = False
+        route["recommendation_reason"] = "Weather incomplete: this route cannot be recommended."
+    if not eligible:
+        return None, routes
+    sorted_routes = sorted(eligible, key=_sort_key)
     best_route = sorted_routes[0]
 
     # Annotate routes with recommendation flags and explanations
@@ -52,7 +58,7 @@ def recommend_best_route(routes: list[dict]) -> tuple[dict, list[dict]]:
             route["recommendation_reason"] = (
                 f"Recommended based on safest path: {', '.join(reasons)}."
             )
-        else:
+        elif route in eligible:
             route["is_recommended"] = False
             route["recommendation_reason"] = "Alternative route."
 

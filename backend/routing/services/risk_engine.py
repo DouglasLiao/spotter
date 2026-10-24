@@ -1,4 +1,5 @@
 import logging
+import math
 from enum import IntEnum
 
 logger = logging.getLogger(__name__)
@@ -121,13 +122,13 @@ def apply_load_rules(
         )
 
     # Rule 2: 45–54 mph + >30,000 lb -> No Travel
-    if 45.0 <= wind_mph <= 54.0 and load_weight_lbs > 30000.0:
+    if 45.0 <= wind_mph < 55.0 and load_weight_lbs > 30000.0:
         penalty_applied = True
         reason = f"High wind ({wind_mph:.1f} mph) with heavy load ({load_weight_lbs:,.0f} lb > 30,000 lb) escalated to No Travel."
         return RiskLevel.NO_TRAVEL, penalty_applied, reason
 
     # Rule 3: 35–44 mph + >40,000 lb -> Severe
-    if 35.0 <= wind_mph <= 44.0 and load_weight_lbs > 40000.0:
+    if 35.0 <= wind_mph < 45.0 and load_weight_lbs > 40000.0:
         penalty_applied = True
         reason = f"Moderate/High wind ({wind_mph:.1f} mph) with heavy load ({load_weight_lbs:,.0f} lb > 40,000 lb) escalated to Severe."
         return RiskLevel.SEVERE, penalty_applied, reason
@@ -140,9 +141,14 @@ def evaluate_checkpoint_risk(weather: dict, load_weight_lbs: float) -> dict:
     Evaluates weather risk for an individual checkpoint considering wind, rain, snow,
     and load weight constraints.
     """
-    wind_mph = float(weather.get("wind_mph", 0.0))
-    rain_in_hr = float(weather.get("rain_in_hr", 0.0))
-    snow_in_hr = float(weather.get("snow_in_hr", 0.0))
+    values = [weather.get(field) for field in ("wind_mph", "rain_in_hr", "snow_in_hr")]
+    if weather.get("available") is False or any(
+        not isinstance(value, (int, float)) or isinstance(value, bool)
+        or not math.isfinite(value) or value < 0 for value in values
+    ):
+        return {"overall_risk_level": None, "overall_risk_label": "Unknown",
+                "load_penalty_applied": False, "load_reason": "Weather unavailable; risk cannot be assessed."}
+    wind_mph, rain_in_hr, snow_in_hr = values
 
     rain_risk = classify_rain(rain_in_hr)
     snow_risk = classify_snow(snow_in_hr)
@@ -176,9 +182,11 @@ def calculate_route_risk_metrics(checkpoints: list[dict]) -> dict:
     """
     if not checkpoints:
         return {
-            "average_risk_score": 1.0,
-            "average_risk_label": "Low",
-            "max_risk_level": "Low",
+            "average_risk_score": None,
+            "average_risk_label": "Unknown",
+            "max_risk_level": "Unknown",
+            "weather_complete": False,
+            "unknown_miles": 0.0,
             "severe_miles": 0.0,
             "high_miles": 0.0,
             "moderate_miles": 0.0,
@@ -197,10 +205,16 @@ def calculate_route_risk_metrics(checkpoints: list[dict]) -> dict:
     low_miles = 0.0
     weighted_score_sum = 0.0
     max_risk = RiskLevel.LOW
+    unknown_miles = 0.0
+    weather_complete = True
 
     for cp in checkpoints:
         seg_miles = float(cp.get("segment_miles", 0.0))
-        risk_val = cp.get("risk", {}).get("overall_risk_level", RiskLevel.LOW.value)
+        risk_val = cp.get("risk", {}).get("overall_risk_level")
+        if risk_val is None:
+            unknown_miles += seg_miles
+            weather_complete = False
+            continue
         risk_level = RiskLevel(risk_val)
 
         max_risk = max(max_risk, risk_level)
@@ -221,13 +235,15 @@ def calculate_route_risk_metrics(checkpoints: list[dict]) -> dict:
         else:
             low_miles += seg_miles
 
-    avg_score = round(weighted_score_sum / total_miles, 2)
-    avg_label = RiskLevel.from_score(avg_score).label
+    avg_score = round(weighted_score_sum / total_miles, 2) if weather_complete else None
+    avg_label = RiskLevel.from_score(avg_score).label if weather_complete else "Unknown"
 
     return {
         "average_risk_score": avg_score,
         "average_risk_label": avg_label,
-        "max_risk_level": max_risk.label,
+        "max_risk_level": max_risk.label if weather_complete else "Unknown",
+        "weather_complete": weather_complete,
+        "unknown_miles": round(unknown_miles, 2),
         "severe_miles": round(severe_miles, 1),
         "high_miles": round(high_miles, 1),
         "moderate_miles": round(moderate_miles, 1),
