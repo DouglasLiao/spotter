@@ -13,24 +13,43 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load environment variables from .env file
-load_dotenv(BASE_DIR / ".env")
+# Hosted functions use only the environment configured in Vercel.
+SERVERLESS = os.getenv("VERCEL") == "1"
+if not SERVERLESS:
+    load_dotenv(BASE_DIR / ".env")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
     "SECRET_KEY", "django-insecure-spotter-dev-key-change-in-production"
 )
+if SERVERLESS and not os.getenv("SECRET_KEY"):
+    raise ImproperlyConfigured("Set SECRET_KEY in the Vercel project environment.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "t", "yes")
+DEBUG = os.getenv("DEBUG", "False" if SERVERLESS else "True").lower() in ("true", "1", "t", "yes")
 
 ALLOWED_HOSTS = [
-    host.strip() for host in os.getenv("ALLOWED_HOSTS", "*").split(",") if host.strip()
+    host.strip() for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1" if SERVERLESS else "*").split(",") if host.strip()
 ]
+deployment_hosts = [
+    os.environ[key] for key in ("VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_BRANCH_URL")
+    if os.getenv(key)
+]
+ALLOWED_HOSTS.extend(deployment_hosts)
+
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
+CSRF_TRUSTED_ORIGINS.extend(f"https://{host}" for host in deployment_hosts)
+if os.getenv("TRUST_PROXY_HEADERS", "True" if SERVERLESS else "False").lower() == "true":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = os.getenv("SECURE_COOKIES", "True" if SERVERLESS else "False").lower() == "true"
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+if SERVERLESS:
+    SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
 
 # Application definition
@@ -52,6 +71,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.gzip.GZipMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -60,7 +81,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "True").lower() in (
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False" if SERVERLESS else "True").lower() in (
     "true",
     "1",
     "t",
@@ -88,6 +109,10 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.BrowsableAPIRenderer",
     ]
 }
+if SERVERLESS:
+    # Planning is public and stateless; never consult Django's auth/session tables.
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = []
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = ["rest_framework.renderers.JSONRenderer"]
 
 ROOT_URLCONF = "core.urls"
 
@@ -111,7 +136,7 @@ WSGI_APPLICATION = "core.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": ":memory:" if SERVERLESS else os.getenv("DATABASE_PATH", BASE_DIR / "db.sqlite3"),
     }
 }
 
@@ -139,6 +164,10 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+FRONTEND_DIST = os.getenv("FRONTEND_DIST")
+WHITENOISE_ROOT = FRONTEND_DIST
+WHITENOISE_IMMUTABLE_FILE_TEST = r"^/assets/.+-[A-Za-z0-9_-]{8,}\.(?:js|css)$"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Logging configuration

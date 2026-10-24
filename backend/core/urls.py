@@ -15,10 +15,33 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib import admin
-from django.urls import path, include
+from django.http import FileResponse, Http404, JsonResponse
+from django.urls import include, path, re_path
+
+
+def health(request):
+    return JsonResponse({"status": "ok"})
+
+
+def frontend(request):
+    if not settings.FRONTEND_DIST:
+        raise Http404("Frontend is served separately in this environment.")
+    index = Path(settings.FRONTEND_DIST) / "index.html"
+    if not index.is_file():
+        raise Http404("Frontend build unavailable.")
+    response = FileResponse(index.open("rb"), content_type="text/html")
+    response["Cache-Control"] = "no-cache"
+    return response
+
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("api/health/", health, name="health"),
     path("api/", include("routing.urls")),
+    re_path(r"^(?!(?:api|admin|assets|static)(?:/|$)).*$", frontend, name="frontend"),
 ]
+if not settings.SERVERLESS:
+    urlpatterns.insert(1, path("admin/", admin.site.urls))

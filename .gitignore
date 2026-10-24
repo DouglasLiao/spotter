@@ -43,6 +43,8 @@ yarn-error.log*
 .pnpm-debug.log*
 dist/
 dist-ssr/
+playwright-report/
+test-results/
 *.local
 
 # Environment & IDE
@@ -53,6 +55,11 @@ dist-ssr/
 *.swp
 *.swo
 .DS_Store
+.vercel/
 
 # Initial documentation
 *.md
+
+# Assessment delivery documentation
+!docs/DEPLOY_VERCEL.md
+!docs/WALKTHROUGH.md
