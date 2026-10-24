@@ -27,7 +27,7 @@ function getRiskBadgeClass(level: RiskLevel): string {
     case 'No Travel':
       return 'risk-badge-no-travel'
     default:
-      return 'risk-badge-low'
+      return 'risk-badge-unknown'
   }
 }
 
@@ -39,13 +39,14 @@ export const RouteCard: React.FC<RouteCardProps> = ({ route, isSelected, onSelec
   const severePct = Math.round((risk_summary.severe_miles / totalMiles) * 100)
   const highPct = Math.round((risk_summary.high_miles / totalMiles) * 100)
   const modPct = Math.round((risk_summary.moderate_miles / totalMiles) * 100)
-  const lowPct = Math.max(0, 100 - severePct - highPct - modPct)
+  const lowPct = Math.round((risk_summary.low_miles / totalMiles) * 100)
+  const unknownPct = Math.round(((risk_summary.unknown_miles ?? 0) / totalMiles) * 100)
 
   const peakRisk: RiskLevel =
-    risk_summary.max_risk_level || risk_summary.highest_risk_level || 'Low'
+    risk_summary.max_risk_level || risk_summary.highest_risk_level || 'Unknown'
 
   const riskScore =
-    risk_summary.weighted_risk_score ?? risk_summary.average_risk_score ?? 1.0
+    risk_summary.weighted_risk_score ?? risk_summary.average_risk_score
 
   const durationFormatted =
     route.duration_formatted ||
@@ -107,7 +108,7 @@ export const RouteCard: React.FC<RouteCardProps> = ({ route, isSelected, onSelec
           <IoShieldOutline size={16} className="metric-icon" />
           <div className="metric-content">
             <span className="metric-label">Avg Risk</span>
-            <span className="metric-value">{riskScore.toFixed(2)} / 5.0</span>
+            <span className="metric-value">{riskScore == null ? 'Unknown' : `${riskScore.toFixed(2)} / 5.0`}</span>
           </div>
         </div>
       </div>
@@ -125,11 +126,14 @@ export const RouteCard: React.FC<RouteCardProps> = ({ route, isSelected, onSelec
 
         {/* Visual Solid Segmented Bar */}
         <div className="segmented-risk-bar">
+          <div className="segment-unknown" style={{ width: `${unknownPct}%` }} title={`Unknown: ${(risk_summary.unknown_miles ?? 0).toFixed(1)} mi`} />
           <div className="segment-low" style={{ width: `${lowPct}%` }} title={`Low: ${risk_summary.low_miles.toFixed(1)} mi`} />
           <div className="segment-moderate" style={{ width: `${modPct}%` }} title={`Moderate: ${risk_summary.moderate_miles.toFixed(1)} mi`} />
           <div className="segment-high" style={{ width: `${highPct}%` }} title={`High: ${risk_summary.high_miles.toFixed(1)} mi`} />
           <div className="segment-severe" style={{ width: `${severePct}%` }} title={`Severe: ${risk_summary.severe_miles.toFixed(1)} mi`} />
         </div>
+
+        {risk_summary.weather_complete === false && <p className="weather-warning">Weather incomplete — route excluded from recommendations. Unknown: {(risk_summary.unknown_miles ?? 0).toFixed(1)} mi.</p>}
 
         {/* Numeric Legend Pills */}
         <div className="risk-numbers-row">

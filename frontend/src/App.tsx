@@ -46,7 +46,7 @@ function App() {
   const handleApplyForecastTime = (offsetHours: number) => {
     if (!lastRequest) return
 
-    const baseDate = lastRequest.departure_time ? new Date(lastRequest.departure_time) : new Date()
+    const baseDate = new Date(planData?.departure_time ?? lastRequest.departure_time ?? new Date().toISOString())
     const newDeparture = new Date(baseDate.getTime() + offsetHours * 60 * 60 * 1000)
 
     handlePlanRoute({
@@ -70,7 +70,7 @@ function App() {
         <div className="header-badges">
           <span className="header-tech-badge">OSRM 3 Alternatives</span>
           <span className="header-tech-badge">Open-Meteo Hourly</span>
-          <span className="header-tech-badge">4-Tier Risk Engine</span>
+          <span className="header-tech-badge">5 Risk Levels</span>
         </div>
       </header>
 
@@ -86,6 +86,10 @@ function App() {
                 <span>{errorMessage}</span>
               </div>
             )}
+
+            {planData?.warnings?.map((warning) => (
+              <p className="weather-warning" role="status" key={warning}>{warning}</p>
+            ))}
 
             {/* Input Form */}
             <RouteForm onSubmit={handlePlanRoute} isLoading={isLoading} />
@@ -114,6 +118,8 @@ function App() {
             onSelectRoute={setSelectedRouteId}
             hasTimeline={!!planData}
             forecastHour={timelineOffsetHours}
+            corridor={planData?.corridor}
+            departureTime={planData?.departure_time}
             heatmapMetric={heatmapMetric}
             onChangeHeatmapMetric={setHeatmapMetric}
             isTripSimulationMode={isTripSimulationMode}

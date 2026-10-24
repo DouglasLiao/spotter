@@ -13,11 +13,16 @@ interface RiskItem {
 
 const RISK_DEFINITIONS: RiskItem[] = [
   {
+    level: 'Unknown', label: 'Unknown', badgeClass: 'risk-badge-unknown',
+    dotClass: 'risk-dot-unknown', description: 'Forecast unavailable or incomplete.',
+    loadRuleNote: 'Missing weather is never treated as Low risk.',
+  },
+  {
     level: 'Low',
     label: 'Low Risk',
     badgeClass: 'risk-badge-low',
     dotClass: 'risk-dot-low',
-    description: 'Wind < 20 mph, Rain < 0.1 in/h, Snow < 0.1 in/h',
+    description: 'Wind < 25 mph, Rain < 0.10 in/h, Snow < 0.5 in/h',
     loadRuleNote: 'Safe driving conditions for standard truck payloads.',
   },
   {
@@ -25,7 +30,7 @@ const RISK_DEFINITIONS: RiskItem[] = [
     label: 'Moderate',
     badgeClass: 'risk-badge-moderate',
     dotClass: 'risk-dot-moderate',
-    description: 'Wind 20-34 mph, Rain 0.1-0.3 in/h, Snow 0.1-0.5 in/h',
+    description: 'Wind 25–<35 mph, Rain 0.10–<0.25 in/h, Snow 0.5–<1.0 in/h',
     loadRuleNote: 'Exercise standard caution on open bridges and elevated corridors.',
   },
   {
@@ -33,7 +38,7 @@ const RISK_DEFINITIONS: RiskItem[] = [
     label: 'High Risk',
     badgeClass: 'risk-badge-high',
     dotClass: 'risk-dot-high',
-    description: 'Wind 35-44 mph, Rain 0.3-0.5 in/h, Snow 0.5-1.0 in/h',
+    description: 'Wind 35–<45 mph, Rain 0.25–<0.50 in/h, Snow 1.0–<2.0 in/h',
     loadRuleNote: 'Severe risk if payload exceeds 40,000 lbs due to crosswind sensitivity.',
   },
   {
@@ -41,16 +46,16 @@ const RISK_DEFINITIONS: RiskItem[] = [
     label: 'Severe Risk',
     badgeClass: 'risk-badge-severe',
     dotClass: 'risk-dot-severe',
-    description: 'Wind 45-54 mph, Rain > 0.5 in/h, Snow > 1.0 in/h',
-    loadRuleNote: 'No Travel if payload exceeds 30,000 lbs.',
+    description: 'Wind 45–<55 mph, Rain 0.50–1.00 in/h, Snow 2.0–3.0 in/h',
+    loadRuleNote: 'Wind 45–<55 mph: No Travel if payload exceeds 30,000 lbs.',
   },
   {
     level: 'No Travel',
     label: 'No Travel',
     badgeClass: 'risk-badge-no-travel',
     dotClass: 'risk-dot-no-travel',
-    description: 'Wind >= 55 mph or severe crosswind threshold exceeded',
-    loadRuleNote: 'Critical rollover risk. Driving is prohibited along this checkpoint.',
+    description: 'Wind ≥ 55 mph, Rain > 1.00 in/h, Snow > 3.0 in/h',
+    loadRuleNote: 'No Travel conditions under the assessment rules.',
   },
 ]
 

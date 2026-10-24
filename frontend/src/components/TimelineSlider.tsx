@@ -29,8 +29,7 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
 
   // Calculate projected date/time based on base time + offsetHours
   const projectedDate = React.useMemo(() => {
-    const d = new Date(baseDepartureTime || new Date())
-    d.setHours(d.getHours() + offsetHours)
+    const d = new Date(new Date(baseDepartureTime).getTime() + offsetHours * 3600000)
     return d.toLocaleString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -149,7 +148,7 @@ export const TimelineSlider: React.FC<TimelineSliderProps> = ({
             }}
             disabled={isLoading}
           >
-            {hr === 0 ? 'Now (0h)' : `+${hr}h`}
+            {hr === 0 ? 'Departure (0h)' : `+${hr}h`}
           </button>
         ))}
       </div>

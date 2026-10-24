@@ -1,4 +1,4 @@
-export type RiskLevel = 'Low' | 'Moderate' | 'High' | 'Severe' | 'No Travel'
+export type RiskLevel = 'Low' | 'Moderate' | 'High' | 'Severe' | 'No Travel' | 'Unknown'
 
 export interface LocationGeo {
   name?: string
@@ -9,20 +9,22 @@ export interface LocationGeo {
 }
 
 export interface WeatherData {
-  wind_mph?: number
+  wind_mph?: number | null
   wind_speed_mph?: number
-  rain_in_hr?: number
+  rain_in_hr?: number | null
   rain_in_per_hr?: number
-  snow_in_hr?: number
+  snow_in_hr?: number | null
   snow_in_per_hr?: number
-  forecast_time?: string
+  available?: boolean
+  unavailable_reason?: string | null
+  forecast_time?: string | null
 }
 
 export interface CheckpointRisk {
   level?: RiskLevel
   overall_risk_label?: RiskLevel
   score?: number
-  overall_risk_level?: number
+  overall_risk_level?: number | null
   reasons?: string[]
   load_reason?: string
   load_penalty_applied: boolean
@@ -31,12 +33,15 @@ export interface CheckpointRisk {
 export type HeatmapMetric = 'none' | 'risk' | 'wind' | 'precip'
 
 export interface HourlyForecastItem {
+  available: boolean
+  unavailable_reason?: string | null
+  forecast_time?: string | null
   hour: number
   time: string
-  wind_mph: number
-  rain_in_hr: number
-  snow_in_hr: number
-  risk_level?: number
+  wind_mph: number | null
+  rain_in_hr: number | null
+  snow_in_hr: number | null
+  risk_level?: number | null
   risk_label?: RiskLevel
   load_penalty_applied?: boolean
 }
@@ -61,7 +66,9 @@ export interface RouteRiskSummary {
   moderate_miles: number
   low_miles: number
   no_travel_miles: number
-  average_risk_score?: number
+  weather_complete?: boolean
+  unknown_miles?: number
+  average_risk_score?: number | null
   weighted_risk_score?: number
   average_risk_label?: string
   max_risk_level?: RiskLevel
@@ -98,7 +105,9 @@ export interface RoutePlanResponse {
   departure_time: string
   load_weight: number
   sample_interval_miles: number
-  recommended_route_id: string | number
+  recommended_route_id: string | number | null
+  warnings: string[]
+  corridor: WeatherCorridor
   routes: RouteOption[]
 }
 
@@ -109,4 +118,11 @@ export interface ApiErrorResponse {
   load_weight?: string[]
   sample_interval_miles?: string[]
   departure_time?: string[]
+}
+
+export interface WeatherCorridor {
+  half_width_miles: number
+  grid_spacing_miles: number
+  max_points?: number
+  points: { lat: number; lon: number; hourly_forecast: HourlyForecastItem[] }[]
 }

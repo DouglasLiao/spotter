@@ -64,7 +64,7 @@ export const RouteList: React.FC<RouteListProps> = ({
       <div className="route-list-footer-tip">
         <IoInformationCircleOutline size={16} className="tip-icon" />
         <p>
-          Routes are evaluated against 3 alternatives. Click any route card to inspect its
+          {routes.length} available route option(s) are compared. Click any route card to inspect its
           path and weather checkpoints on the map.
         </p>
       </div>
